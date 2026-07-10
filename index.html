@@ -31,7 +31,9 @@
   --txt-faint:#646b62;
 
   /* ——— akcenty z palety ——— */
-  --amber:#E8C96A;        /* miód — ostrzeżenie */
+  --amber:#E8C96A;        /* miód — akcent neutralny */
+  --orange:#D98A3D;       /* pomarańcz — próg alertu */
+  --orange-soft:rgba(217,138,61,.14);
   --amber-dim:#c9a94a;
   --amber-soft:rgba(232,201,106,.13);
   --amber-glow:rgba(232,201,106,.24);
@@ -208,11 +210,11 @@ h1.title{font-size:32px;font-weight:640;letter-spacing:-.028em;line-height:1.1}
 .alerts:empty{display:none}
 .alert{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:var(--r-md);font-size:13px;font-weight:550;letter-spacing:-.005em;border:1px solid;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);animation:alertIn .5s var(--ease) backwards}
 @keyframes alertIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:none}}
-.alert.warn{background:rgba(232,201,106,.10);border-color:rgba(232,201,106,.30);color:#E8C96A}
-.alert.over{background:rgba(182,73,38,.14);border-color:rgba(182,73,38,.34);color:#d4795c}
+.alert.warn{background:rgba(217,138,61,.11);border-color:rgba(217,138,61,.32);color:#E09B55}
+.alert.over{background:rgba(196,73,60,.14);border-color:rgba(196,73,60,.36);color:#e0857a}
 .alert .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
-.alert.warn .dot{background:#E8C96A}
-.alert.over .dot{background:#B64926}
+.alert.warn .dot{background:#D98A3D}
+.alert.over .dot{background:#C4493C}
 
 /* buttons */
 /* Tło i cień nadaje JS — kolor śledzi czubek łuku.
@@ -405,6 +407,56 @@ textarea.field{resize:none;min-height:50px}
 .word-pill button{border:none;background:none;color:var(--txt-faint);font-size:14px;cursor:pointer;line-height:1;padding:0 1px;font-family:inherit;transition:color .2s}
 .word-pill button:active{color:#B64926}
 
+
+/* ═══ pasek sumy limitów ═══ */
+.limits-bar{padding:14px 17px;margin-bottom:10px}
+.lb-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:9px}
+.lb-label{font-size:12.5px;color:var(--txt-dim);font-weight:550;letter-spacing:-.005em}
+.lb-vals{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.lb-track{height:6px;border-radius:6px;background:rgba(230,240,225,.07);overflow:hidden;position:relative}
+.lb-fill{height:100%;border-radius:6px;transition:width .7s var(--ease),background .5s var(--ease);min-width:2px}
+.lb-mark{position:absolute;top:-3px;bottom:-3px;width:2px;background:rgba(230,240,225,.42);border-radius:2px}
+.lb-foot{display:flex;justify-content:space-between;margin-top:7px;font-size:11px;color:var(--txt-faint);font-weight:550;font-variant-numeric:tabular-nums}
+
+/* ═══ trwały alert przekroczenia sumy ═══ */
+.limit-alert{
+  display:flex;gap:11px;align-items:flex-start;
+  padding:13px 15px;margin-bottom:10px;border-radius:var(--r-md);
+  background:rgba(182,73,38,.13);border:1px solid rgba(182,73,38,.34);
+  animation:alertIn .45s var(--ease);
+}
+.limit-alert .la-ico{
+  flex-shrink:0;width:19px;height:19px;border-radius:50%;
+  background:#B64926;color:#fff;font-size:12px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;margin-top:1px;
+}
+.limit-alert .la-body{flex:1;min-width:0}
+.limit-alert .la-title{font-size:13.5px;font-weight:650;color:#e0947c;letter-spacing:-.01em;margin-bottom:3px}
+.limit-alert .la-text{font-size:12px;color:var(--txt-dim);line-height:1.5;letter-spacing:-.003em}
+.limit-alert .la-text b{color:#e0947c;font-variant-numeric:tabular-nums;font-weight:650}
+
+.limit-ok{
+  display:flex;gap:10px;align-items:center;
+  padding:11px 15px;margin-bottom:10px;border-radius:var(--r-md);
+  background:var(--green-soft);border:1px solid rgba(95,164,124,.28);
+  font-size:12.5px;color:#8FBCA1;font-weight:550;letter-spacing:-.005em;
+  animation:alertIn .45s var(--ease);
+}
+.limit-ok .la-ico{
+  flex-shrink:0;width:17px;height:17px;border-radius:50%;background:#5FA47C;
+  color:#0f1a13;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;
+}
+
+/* znacznik kategorii cyklicznej */
+.recur-tag{
+  display:inline-flex;align-items:center;justify-content:center;
+  margin-left:6px;font-size:10px;color:var(--txt-faint);
+  width:15px;height:15px;border-radius:50%;
+  background:rgba(230,240,225,.07);border:1px solid var(--border);
+  font-weight:700;line-height:1;
+}
+.cat-set-recur{font-size:10px;color:var(--txt-faint);margin-left:5px}
+
 /* toast */
 .toast{
   position:fixed;bottom:calc(var(--nav-h) + 26px);left:50%;z-index:60;transform:translateX(-50%);
@@ -488,7 +540,7 @@ body.kb-open .toast{bottom:calc(var(--kb) + 20px)}
         </div>
       </div>
       <button class="add-btn" id="add-btn" onclick="openSheet()"><span class="plus">+</span> Dodaj wydatek</button>
-      <div class="eyebrow" style="padding:0 4px 10px">Kategorie w tym miesiącu</div>
+      <div class="eyebrow" style="padding:0 4px 10px">Kategorie w tym tygodniu</div>
       <div class="glass cat-list" id="cat-list"></div>
     </div>
 
@@ -543,11 +595,13 @@ body.kb-open .toast{bottom:calc(var(--kb) + 20px)}
       <div class="phead"><div><h1 class="title">Ustawienia</h1><div class="subtitle">Wszystko tu zmienisz</div></div></div>
       <div class="set-group"><div class="eyebrow">Limity</div></div>
       <div class="glass set-card">
-        <div class="set-row"><div><div class="set-label">Limit miesięczny</div><div class="set-sub">Tygodniowy = limit ÷ 4,345</div></div><input class="set-input" id="s-monthly" type="number" inputmode="numeric"></div>
+        <div class="set-row"><div><div class="set-label">Limit miesięczny</div><div class="set-sub" id="weekly-preview">—</div></div><input class="set-input" id="s-monthly" type="number" inputmode="numeric"></div>
         <div class="set-row"><div><div class="set-label">Próg alertu</div><div class="set-sub">Ostrzeżenie przy % limitu kategorii</div></div><input class="set-input" id="s-threshold" type="number" inputmode="numeric"></div>
         <div class="set-row"><div><div class="set-label">Waluta</div></div><input class="set-input" id="s-currency" type="text" maxlength="4"></div>
       </div>
-      <div class="set-group"><div class="eyebrow">Kategorie i limity</div></div>
+      <div class="set-group"><div class="eyebrow">Kategorie i limity tygodniowe</div></div>
+      <div id="limits-alert"></div>
+      <div class="glass limits-bar" id="limits-bar"></div>
       <div class="glass set-card" id="cat-settings"></div>
       <button class="add-row-btn" onclick="addCategory()">+ Dodaj kategorię</button>
       <div class="set-group" style="margin-top:18px"><div class="eyebrow">Rachunki cykliczne</div></div>
@@ -763,7 +817,20 @@ track.addEventListener('touchcancel',endSwipe,{passive:true});
 
 /* ════════ constants ════════ */
 const WEEKS_PER_MONTH=4.345;
-const DEFAULTS={monthly:5000,threshold:80,currency:'zł',categories:[{name:'Jedzenie',limit:1200},{name:'Mieszkanie',limit:2000},{name:'Transport',limit:600},{name:'Media',limit:500},{name:'Rozrywka',limit:400},{name:'Zdrowie',limit:300},{name:'Ubrania',limit:250},{name:'Sport',limit:300},{name:'Inne',limit:400}],recur:[{name:'Amazon Prime',amount:10,cat:'Rozrywka',day:1},{name:'Karnet siłownia',amount:290,cat:'Sport',day:1}]};
+/* limit w kategoriach jest TYGODNIOWY (schema v2) */
+const DEFAULTS={
+  schema:2,
+  monthly:5000,threshold:80,currency:'zł',
+  categories:[
+    {name:'Jedzenie',limit:276},{name:'Mieszkanie',limit:460},{name:'Transport',limit:138},
+    {name:'Media',limit:115},{name:'Rozrywka',limit:92},{name:'Zdrowie',limit:69},
+    {name:'Ubrania',limit:58},{name:'Sport',limit:69},{name:'Inne',limit:92}
+  ],
+  recur:[
+    {name:'Amazon Prime',amount:10,cat:'Rozrywka',day:1},
+    {name:'Karnet siłownia',amount:290,cat:'Sport',day:1}
+  ]
+};
 const SEED_WORDS={monster:'Jedzenie',cola:'Jedzenie',piwo:'Jedzenie',kawa:'Jedzenie',woda:'Jedzenie',obiad:'Jedzenie',sniadanie:'Jedzenie',kolacja:'Jedzenie',pizza:'Jedzenie',burger:'Jedzenie',chleb:'Jedzenie',mleko:'Jedzenie',przekaska:'Jedzenie',baton:'Jedzenie',lody:'Jedzenie',biedronka:'Jedzenie',lidl:'Jedzenie',zabka:'Jedzenie',kaufland:'Jedzenie',auchan:'Jedzenie',restauracja:'Jedzenie',kebab:'Jedzenie',czynsz:'Mieszkanie',najem:'Mieszkanie',remont:'Mieszkanie',meble:'Mieszkanie',paliwo:'Transport',benzyna:'Transport',diesel:'Transport',orlen:'Transport',shell:'Transport',bilet:'Transport',parking:'Transport',autostrada:'Transport',myjnia:'Transport',uber:'Transport',taxi:'Transport',serwis:'Transport',opony:'Transport',prad:'Media',gaz:'Media',internet:'Media',telefon:'Media',abonament:'Media',kino:'Rozrywka',netflix:'Rozrywka',spotify:'Rozrywka',hbo:'Rozrywka',gra:'Rozrywka',koncert:'Rozrywka',ksiazka:'Rozrywka',lekarz:'Zdrowie',apteka:'Zdrowie',leki:'Zdrowie',dentysta:'Zdrowie',badania:'Zdrowie',buty:'Ubrania',kurtka:'Ubrania',spodnie:'Ubrania',koszulka:'Ubrania',ubrania:'Ubrania',silownia:'Sport',karnet:'Sport',basen:'Sport',rower:'Sport',suplementy:'Sport'};
 const MONTHS=['Styczeń','Luty','Marzec','Kwiecień','Maj','Czerwiec','Lipiec','Sierpień','Wrzesień','Październik','Listopad','Grudzień'];
 const MONTHS_SHORT=['sty','lut','mar','kwi','maj','cze','lip','sie','wrz','paź','lis','gru'];
@@ -792,17 +859,41 @@ const fmt=n=>Math.round(n).toLocaleString('pl-PL');
 
 /* ════════ persistence ════════ */
 function load(){
-  try{S=JSON.parse(localStorage.getItem('bd_settings'))||clone(DEFAULTS)}catch(e){S=clone(DEFAULTS)}
+  const rawSettings = localStorage.getItem('bd_settings');
+  const isFirstRun = !rawSettings;
+  try{S=JSON.parse(rawSettings)||clone(DEFAULTS)}catch(e){S=clone(DEFAULTS)}
   try{TX=JSON.parse(localStorage.getItem('bd_tx'))||[]}catch(e){TX=[]}
   try{WORDS=JSON.parse(localStorage.getItem('bd_words'))||clone(SEED_WORDS)}catch(e){WORDS=clone(SEED_WORDS)}
   if(!S||typeof S!=='object')S=clone(DEFAULTS);
+
+  /* Odczytaj wersję schematu ZANIM domyślne ją nadpiszą.
+     Brak pola = stare dane (v1) z limitami miesięcznymi.
+     Świeża instalacja = od razu v2, bez przeliczania. */
+  const storedSchema = isFirstRun ? 2 : (Number.isFinite(S.schema) ? S.schema : 1);
+
   for(const k in DEFAULTS)if(S[k]===undefined)S[k]=clone(DEFAULTS[k]);
   if(!Array.isArray(S.categories)||!S.categories.length)S.categories=clone(DEFAULTS.categories);
   if(!Array.isArray(S.recur))S.recur=[];
   S.recur.forEach(r=>{if(!Number.isFinite(r.day))r.day=1});
   if(!Array.isArray(TX))TX=[];
   TX=TX.filter(isValidTx);
+
+  S.schema = storedSchema;
+  migrate();
+
   const now=new Date();viewY=now.getFullYear();viewM=now.getMonth();
+}
+
+/* ═══ migracja v1 → v2: limity kategorii z miesięcznych na tygodniowe ═══
+   Jednorazowa. Znacznik schema:2 zapobiega ponownemu dzieleniu. */
+function migrate(){
+  if(S.schema>=2)return;
+  S.categories.forEach(c=>{
+    c.limit = Math.max(0, Math.round((parseFloat(c.limit)||0) / WEEKS_PER_MONTH));
+  });
+  S.schema=2;
+  saveS();
+  setTimeout(()=>toast('Limity kategorii przeliczono na tygodniowe','info'),1000);
 }
 function isValidTx(t){return t&&typeof t==='object'&&typeof t.id==='string'&&Number.isFinite(t.amount)&&t.amount>0&&!isNaN(new Date(t.date).getTime())&&(t.type==='Wydatek'||t.type==='Przychód')}
 function saveS(){try{localStorage.setItem('bd_settings',JSON.stringify(S))}catch(e){toast('Nie udało się zapisać','err')}}
@@ -824,9 +915,32 @@ function calc(){
   const monthInc=monthTx.filter(t=>t.type==='Przychód').reduce((a,t)=>a+t.amount,0);
   const weekExp=weekTx.filter(t=>t.type==='Wydatek').reduce((a,t)=>a+t.amount,0);
   const weekBudget=S.monthly/WEEKS_PER_MONTH,weekLeft=weekBudget-weekExp;
+
+  /* limity kategorii są tygodniowe → wydatki też liczymy z tygodnia */
   const catSpend={};S.categories.forEach(c=>catSpend[c.name]=0);
-  monthTx.filter(t=>t.type==='Wydatek').forEach(t=>{catSpend[t.cat]=(catSpend[t.cat]||0)+t.amount});
-  return{y,m,wb,monthExp,monthInc,weekExp,weekBudget,weekLeft,balance:monthInc-monthExp,catSpend};
+  weekTx.filter(t=>t.type==='Wydatek').forEach(t=>{catSpend[t.cat]=(catSpend[t.cat]||0)+t.amount});
+
+  /* wydatki miesięczne per kategoria — nadal potrzebne w Statystykach */
+  const catSpendMonth={};S.categories.forEach(c=>catSpendMonth[c.name]=0);
+  monthTx.filter(t=>t.type==='Wydatek').forEach(t=>{catSpendMonth[t.cat]=(catSpendMonth[t.cat]||0)+t.amount});
+
+  return{y,m,wb,monthExp,monthInc,weekExp,weekBudget,weekLeft,balance:monthInc-monthExp,catSpend,catSpendMonth};
+}
+
+/* ═══ kategorie z rachunkami cyklicznymi nie dostają alertów ═══
+   Czynsz 2000 zł raz w miesiącu zawsze przebiłby limit tygodniowy. */
+function recurCats(){
+  return new Set(S.recur.filter(r=>r.amount>0).map(r=>r.cat));
+}
+
+/* ═══ suma limitów tygodniowych vs budżet tygodniowy ═══ */
+function limitsSummary(){
+  const sum=S.categories.reduce((a,c)=>a+(parseFloat(c.limit)||0),0);
+  const budget=S.monthly/WEEKS_PER_MONTH;
+  /* Limity wpisuje się w pełnych złotych, budżet wychodzi ułamkowy (5000/4,345=1150,75).
+     Bez tolerancji suma 1151 „przekracza" 1150,75 o 25 groszy i zapala alert. */
+  const over = sum - budget > 0.5;
+  return {sum, budget, over, diff:sum-budget};
 }
 
 /* ════════ gauge ════════ */
@@ -884,11 +998,24 @@ function renderHome(){
   document.getElementById('hs-budget').textContent=fmt(c.weekBudget);
   const bal=document.getElementById('hs-balance');bal.textContent=(c.balance>=0?'+':'−')+fmt(Math.abs(c.balance));bal.style.color=c.balance>=0?'#8FBCA1':'#d4644a';
   renderAlerts(c);
+  const skipCats=recurCats();
   document.getElementById('cat-list').innerHTML=S.categories.map((cat,i)=>{
-    const spent=c.catSpend[cat.name]||0,p=cat.limit>0?Math.min(1,spent/cat.limit):0,isOver=cat.limit>0&&spent>cat.limit,isNear=!isOver&&cat.limit>0&&p>=S.threshold/100;
-    const col=isOver?'var(--brick)':isNear?'#E8C96A':PALETTE[i%PALETTE.length];
-    const valCol=isOver?'color:#d4644a':isNear?'color:#E8C96A':'';
-    return`<div class="cat-row"><div class="cat-head"><span class="cat-name">${CAT_ICONS[cat.name]||'•'} ${esc(cat.name)}</span><span class="cat-vals" style="${valCol}">${fmt(spent)} / ${fmt(cat.limit)}</span></div><div class="cat-track"><div class="cat-fill" style="width:${p*100}%;background:${col}"></div></div></div>`;
+    const spent=c.catSpend[cat.name]||0;
+    const isRecur=skipCats.has(cat.name);
+    const p=cat.limit>0?Math.min(1,spent/cat.limit):0;
+
+    /* Kolor paska pokazuje stan ZAWSZE — także dla kategorii cyklicznych.
+       Zwolnienie z alertów dotyczy tylko komunikatów u góry ekranu. */
+    const over  = cat.limit>0 && spent>cat.limit;
+    const near  = !over && cat.limit>0 && p>=S.threshold/100;
+
+    const col   = over ? '#C4493C' : near ? '#D98A3D' : PALETTE[i%PALETTE.length];
+    const valCol= over ? 'color:#d4644a' : near ? 'color:#D98A3D' : '';
+    const glow  = over ? 'box-shadow:0 0 8px rgba(196,73,60,.45)'
+                : near ? 'box-shadow:0 0 7px rgba(217,138,61,.38)' : '';
+
+    const badge=isRecur?'<span class="recur-tag" title="Rachunek cykliczny — bez alertów">↻</span>':'';
+    return`<div class="cat-row"><div class="cat-head"><span class="cat-name">${CAT_ICONS[cat.name]||'•'} ${esc(cat.name)}${badge}</span><span class="cat-vals" style="${valCol}">${fmt(spent)} / ${fmt(cat.limit)}</span></div><div class="cat-track"><div class="cat-fill" style="width:${p*100}%;background:${col};${glow}"></div></div></div>`;
   }).join('');
 }
 /* Kolor przycisku = kolor czubka łuku.
@@ -917,7 +1044,17 @@ function shade(hex,pct){
   return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
 }
 function renderAlerts(c){
-  const al=[];S.categories.forEach(cat=>{if(cat.limit<=0)return;const spent=c.catSpend[cat.name]||0;if(spent>cat.limit)al.push({t:'over',msg:`${esc(cat.name)} — ponad limit o ${fmt(spent-cat.limit)} ${esc(S.currency)}`});else if(spent>=cat.limit*S.threshold/100)al.push({t:'warn',msg:`${esc(cat.name)} — zostało ${fmt(cat.limit-spent)} ${esc(S.currency)}`})});
+  const skip=recurCats();
+  const al=[];
+  S.categories.forEach(cat=>{
+    if(cat.limit<=0)return;
+    if(skip.has(cat.name))return;          // rachunki cykliczne rozwalają tygodniowy limit
+    const spent=c.catSpend[cat.name]||0;
+    if(spent>cat.limit)
+      al.push({t:'over',msg:`${esc(cat.name)} — ponad limit o ${fmt(spent-cat.limit)} ${esc(S.currency)}`});
+    else if(spent>=cat.limit*S.threshold/100)
+      al.push({t:'warn',msg:`${esc(cat.name)} — zostało ${fmt(cat.limit-spent)} ${esc(S.currency)}`});
+  });
   document.getElementById('alerts-container').innerHTML=al.map((a,i)=>`<div class="alert ${a.t}" style="animation-delay:${i*.06}s"><span class="dot"></span>${a.msg}</div>`).join('');
 }
 
@@ -1023,10 +1160,92 @@ function renderTrend(){
 
 /* ════════ settings ════════ */
 function renderSettings(){
-  document.getElementById('s-monthly').value=S.monthly;document.getElementById('s-threshold').value=S.threshold;document.getElementById('s-currency').value=S.currency;
-  document.getElementById('cat-settings').innerHTML=S.categories.map((c,i)=>`<div class="set-row"><input class="set-input wide" style="flex:1" value="${esc(c.name)}" onchange="editCatName(${i},this.value)"><input class="set-input" style="width:88px" type="number" inputmode="numeric" value="${c.limit}" onchange="editCatLimit(${i},this.value)"><button class="icon-btn danger" onclick="delCat(${i})" aria-label="Usuń kategorię">✕</button></div>`).join('');
+  document.getElementById('s-monthly').value=S.monthly;
+  document.getElementById('s-threshold').value=S.threshold;
+  document.getElementById('s-currency').value=S.currency;
+
+  renderWeeklyPreview();
+  renderLimitsBar();
+
+  const skip=recurCats();
+  document.getElementById('cat-settings').innerHTML=S.categories.map((c,i)=>{
+    const tag=skip.has(c.name)?'<span class="cat-set-recur" title="Rachunek cykliczny — bez alertów">↻</span>':'';
+    return `<div class="set-row">
+      <input class="set-input wide" style="flex:1" value="${esc(c.name)}" onchange="editCatName(${i},this.value)">${tag}
+      <input class="set-input" style="width:88px" type="number" inputmode="numeric" value="${c.limit}" onchange="editCatLimit(${i},this.value)">
+      <button class="icon-btn danger" onclick="delCat(${i})" aria-label="Usuń kategorię">✕</button>
+    </div>`;
+  }).join('');
+
   document.getElementById('recur-settings').innerHTML=S.recur.length?S.recur.map((r,i)=>`<div class="set-row" style="flex-wrap:wrap;gap:8px"><input class="set-input wide" style="flex:1 1 100%" value="${esc(r.name)}" onchange="editRecur(${i},'name',this.value)"><input class="set-input" style="width:78px" type="number" inputmode="decimal" value="${r.amount}" onchange="editRecur(${i},'amount',this.value)"><select class="set-input" style="width:auto;flex:1;text-align:left" onchange="editRecur(${i},'cat',this.value)">${S.categories.map(c=>`<option ${c.name===r.cat?'selected':''}>${esc(c.name)}</option>`).join('')}</select><input class="set-input" style="width:56px" type="number" inputmode="numeric" min="1" max="28" value="${r.day}" onchange="editRecur(${i},'day',this.value)" title="Dzień miesiąca"><button class="icon-btn danger" onclick="delRecur(${i})" aria-label="Usuń rachunek">✕</button></div>`).join(''):'<div style="padding:14px 0;color:var(--txt-faint);font-size:12.5px">Brak rachunków cyklicznych</div>';
+
   renderWords();
+}
+
+/* ═══ podgląd limitu tygodniowego pod polem miesięcznym ═══ */
+function renderWeeklyPreview(){
+  const el=document.getElementById('weekly-preview');
+  if(!el)return;
+  const w=S.monthly/WEEKS_PER_MONTH;
+  el.innerHTML = S.monthly>0
+    ? `Tygodniowo: <b style="color:var(--sage);font-variant-numeric:tabular-nums">${fmt(w)} ${esc(S.currency)}</b> <span style="opacity:.55">(÷ 4,345)</span>`
+    : 'Ustaw limit, żeby zobaczyć tygodniowy';
+}
+
+/* ═══ pasek sumy limitów + trwały alert ═══ */
+function renderLimitsBar(){
+  const bar=document.getElementById('limits-bar');
+  const box=document.getElementById('limits-alert');
+  if(!bar||!box)return;
+
+  const {sum,budget,over,diff}=limitsSummary();
+  const pct = budget>0 ? sum/budget : 0;
+  const fillPct = Math.min(100, pct*100);
+  const col = over ? '#C4493C' : (pct>=S.threshold/100 ? '#D98A3D' : '#5FA47C');
+
+  bar.innerHTML = `
+    <div class="lb-top">
+      <span class="lb-label">Suma limitów tygodniowych</span>
+      <span class="lb-vals" style="color:${over?'#e0947c':'var(--txt)'}">${fmt(sum)} / ${fmt(budget)} ${esc(S.currency)}</span>
+    </div>
+    <div class="lb-track">
+      <div class="lb-fill" style="width:${fillPct}%;background:${col}"></div>
+      ${over?'<div class="lb-mark" style="right:0"></div>':''}
+    </div>
+    <div class="lb-foot">
+      <span>${Math.round(pct*100)}% budżetu tygodniowego</span>
+      <span>${over?`+${fmt(diff)} ponad`:`${fmt(Math.max(0,-diff))} wolne`}</span>
+    </div>`;
+
+  if(budget<=0){
+    box.innerHTML = `
+      <div class="limit-ok" style="background:rgba(230,240,225,.04);border-color:var(--border);color:var(--txt-dim)">
+        <span class="la-ico" style="background:var(--txt-faint);color:var(--bg)">?</span>
+        <span>Ustaw limit miesięczny, żeby sprawdzić sumę limitów</span>
+      </div>`;
+    return;
+  }
+  if(over){
+    box.innerHTML = `
+      <div class="limit-alert" role="alert">
+        <span class="la-ico">!</span>
+        <div class="la-body">
+          <div class="la-title">Limity przekraczają budżet</div>
+          <div class="la-text">
+            Suma limitów kategorii wynosi <b>${fmt(sum)} ${esc(S.currency)}</b>,
+            a Twój budżet tygodniowy to <b>${fmt(budget)} ${esc(S.currency)}</b>.
+            Obniż limity o <b>${fmt(diff)} ${esc(S.currency)}</b> albo podnieś limit miesięczny
+            do <b>${fmt(sum*WEEKS_PER_MONTH)} ${esc(S.currency)}</b>.
+          </div>
+        </div>
+      </div>`;
+  } else {
+    box.innerHTML = `
+      <div class="limit-ok">
+        <span class="la-ico">✓</span>
+        <span>${diff>-0.5?'Limity dokładnie wypełniają budżet':`Limity mieszczą się w budżecie — zostaje ${fmt(-diff)} ${esc(S.currency)} zapasu`}</span>
+      </div>`;
+  }
 }
 function renderWords(){
   const box=document.getElementById('words-settings'),byCat={};Object.entries(WORDS).forEach(([w,cat])=>{(byCat[cat]=byCat[cat]||[]).push(w)});
@@ -1037,8 +1256,8 @@ function renderWords(){
 function toggleAcc(name){if(openAccs.has(name))openAccs.delete(name);else openAccs.add(name);const el=document.querySelector(`.acc[data-cat="${CSS.escape(name)}"]`);if(el)el.classList.toggle('open');haptic('light')}
 function delWord(w){delete WORDS[w];saveW();renderWords();haptic('light')}
 function editCatName(i,v){const old=S.categories[i].name,nn=v.trim();if(!nn){renderSettings();return}if(S.categories.some((c,j)=>j!==i&&c.name===nn)){toast('Taka kategoria już jest','err');renderSettings();return}S.categories[i].name=nn;TX.forEach(t=>{if(t.cat===old)t.cat=nn});Object.keys(WORDS).forEach(w=>{if(WORDS[w]===old)WORDS[w]=nn});S.recur.forEach(r=>{if(r.cat===old)r.cat=nn});saveS();saveTX();saveW();refresh()}
-function editCatLimit(i,v){S.categories[i].limit=Math.max(0,parseFloat(v)||0);saveS();refresh()}
-function addCategory(){let n='Nowa',k=1;while(S.categories.some(c=>c.name===n))n='Nowa '+(++k);S.categories.push({name:n,limit:200});saveS();renderSettings();refresh();haptic('light')}
+function editCatLimit(i,v){S.categories[i].limit=Math.max(0,parseFloat(v)||0);saveS();renderLimitsBar();refresh()}
+function addCategory(){let n='Nowa',k=1;while(S.categories.some(c=>c.name===n))n='Nowa '+(++k);S.categories.push({name:n,limit:50});saveS();renderSettings();refresh();haptic('light')}
 
 /* ─── category delete with migration ─── */
 let pendingDel=null,moveTarget=null;
@@ -1255,6 +1474,8 @@ function toast(msg,type){type=type||'info';const t=document.getElementById('toas
 
 /* ════════ inputs ════════ */
 document.getElementById('s-monthly').addEventListener('change',e=>{S.monthly=Math.max(0,parseFloat(e.target.value)||0);saveS();refresh()});
+/* podgląd tygodniowego aktualizuje się przy każdym wpisanym znaku */
+document.getElementById('s-monthly').addEventListener('input',e=>{const v=Math.max(0,parseFloat(e.target.value)||0);const el=document.getElementById('weekly-preview');if(el)el.innerHTML=v>0?`Tygodniowo: <b style="color:var(--sage);font-variant-numeric:tabular-nums">${fmt(v/WEEKS_PER_MONTH)} ${esc(S.currency)}</b> <span style="opacity:.55">(÷ 4,345)</span>`:'Ustaw limit, żeby zobaczyć tygodniowy';});
 document.getElementById('s-threshold').addEventListener('change',e=>{S.threshold=Math.min(100,Math.max(1,parseFloat(e.target.value)||80));saveS();refresh()});
 document.getElementById('s-currency').addEventListener('change',e=>{S.currency=e.target.value.trim()||'zł';saveS();refresh()});
 document.getElementById('in-text').addEventListener('input',function(){this.style.height='auto';this.style.height=this.scrollHeight+'px'});
