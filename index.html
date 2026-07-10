@@ -1060,12 +1060,181 @@ function addRecur(){S.recur.push({name:'Nowy rachunek',amount:0,cat:S.categories
 function applyRecurNow(){const now=new Date(),y=now.getFullYear(),m=now.getMonth();let added=0;S.recur.forEach(r=>{if(!(r.amount>0))return;const key=`${y}-${m}-${r.name}`;if(TX.some(t=>t.recurKey===key))return;const day=Math.min(Math.max(1,r.day||1),28);TX.push({id:newId(),date:new Date(y,m,day,12,0,0).toISOString(),type:'Wydatek',cat:r.cat,desc:`${r.name} (cykliczne)`,amount:r.amount,recurKey:key});added++});if(added){saveTX();toast(`Dopisano ${added} ${added===1?'rachunek':'rachunków'}`,'ok');haptic('success')}else toast('Wszystkie już dopisane','info');refresh()}
 
 /* ════════ CSV ════════ */
-function exportCSV(){const rows=[['Data','Typ','Kategoria','Opis','Kwota']];[...TX].sort((a,b)=>new Date(a.date)-new Date(b.date)).forEach(t=>{const d=new Date(t.date);rows.push([`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,t.type,t.cat,'"'+(t.desc+'').replace(/"/g,'""')+'"',String(t.amount).replace('.',',')])});const csv='\uFEFF'+rows.map(r=>r.join(';')).join('\r\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='budzet_'+new Date().toISOString().slice(0,10)+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Kopia zapisana','ok');haptic('success')}
+function exportCSV(){
+  if(!TX.length){
+    toast('Brak wpisów do zapisania','err');
+    haptic('error');
+    return;
+  }
+  const q = s => {                       // cytuj, gdy trzeba
+    s = (s==null?'':String(s));
+    return /[;"\r\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+  };
+  const rows=[['Data','Typ','Kategoria','Opis','Kwota']];
+  [...TX].sort((a,b)=>new Date(a.date)-new Date(b.date)).forEach(t=>{
+    const d=new Date(t.date);
+    rows.push([
+      `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,
+      t.type, t.cat, q(t.desc),
+      String(t.amount).replace('.',',')
+    ]);
+  });
+  // BOM dla Excela + CRLF + końcowy newline
+  const csv='\uFEFF'+rows.map(r=>r.join(';')).join('\r\n')+'\r\n';
+  const name='budzet_'+new Date().toISOString().slice(0,10)+'.csv';
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+
+  // iOS Safari: Web Share API zapisuje plik poprawnie, a.download bywa ignorowane
+  const file = (typeof File!=='undefined') ? new File([blob],name,{type:'text/csv'}) : null;
+  if(IS_IOS && file && navigator.canShare && navigator.canShare({files:[file]})){
+    navigator.share({files:[file],title:'Kopia budżetu'})
+      .then(()=>{toast(`Zapisano ${TX.length} ${plural(TX.length,'wpis','wpisy','wpisów')}`,'ok');haptic('success')})
+      .catch(err=>{ if(err && err.name!=='AbortError') downloadBlob(blob,name); });
+    return;
+  }
+  downloadBlob(blob,name);
+  toast(`Zapisano ${TX.length} ${plural(TX.length,'wpis','wpisy','wpisów')}`,'ok');
+  haptic('success');
+}
+function downloadBlob(blob,name){
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=name;a.rel='noopener';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),4000);
+}
 const ISO_DATE=/^(\d{4})-(\d{2})-(\d{2})$/;
 function parseDate(s){const m=ISO_DATE.exec((s||'').trim());if(!m)return null;const y=+m[1],mo=+m[2]-1,d=+m[3];if(mo<0||mo>11||d<1||d>31)return null;const dt=new Date(y,mo,d,12,0,0);if(dt.getFullYear()!==y||dt.getMonth()!==mo||dt.getDate()!==d)return null;return dt}
-function splitCSV(line){const out=[];let cur='',q=false;for(let i=0;i<line.length;i++){const ch=line[i];if(q){if(ch==='"'){if(line[i+1]==='"'){cur+='"';i++}else q=false}else cur+=ch}else{if(ch==='"')q=true;else if(ch===';'){out.push(cur);cur=''}else cur+=ch}}out.push(cur);return out}
-function importCSV(ev){const file=ev.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=e=>{let ok=0,bad=0;try{const lines=(e.target.result+'').replace(/^\uFEFF/,'').split(/\r?\n/).filter(l=>l.trim());const staged=[];lines.slice(1).forEach(line=>{const p=splitCSV(line);if(p.length<5){bad++;return}const dt=parseDate(p[0]);if(!dt){bad++;return}const type=(p[1]||'').trim();if(type!=='Wydatek'&&type!=='Przychód'){bad++;return}const amount=parseFloat((p[4]||'').trim().replace(/\s/g,'').replace(',','.'));if(!Number.isFinite(amount)||amount<=0){bad++;return}const cat=type==='Przychód'?'Przychód':((p[2]||'').trim()||'Inne');staged.push({id:newId(),date:dt.toISOString(),type,cat,desc:(p[3]||'').trim()||'(bez opisu)',amount})});if(!staged.length)toast(bad?`Żaden z ${bad} wierszy nie pasuje`:'Plik jest pusty','err');else{TX.push(...staged);saveTX();toast(bad?`Wczytano ${staged.length}, pominięto ${bad}`:`Wczytano ${staged.length} wpisów`,bad?'info':'ok');haptic('success');refresh()}}catch(err){toast('Nie udało się odczytać pliku','err')}};reader.onerror=()=>toast('Nie udało się odczytać pliku','err');reader.readAsText(file,'utf-8');ev.target.value=''}
-function clearAll(){if(!confirm('Usunąć wszystkie wpisy? Tego nie da się cofnąć.'))return;TX=[];saveTX();toast('Wpisy usunięte','info');haptic('medium');refresh()}
+function splitCSV(line,sep){
+  sep=sep||';';
+  const out=[];let cur='',q=false;
+  for(let i=0;i<line.length;i++){
+    const ch=line[i];
+    if(q){
+      if(ch==='"'){ if(line[i+1]==='"'){cur+='"';i++} else q=false; }
+      else cur+=ch;
+    }else{
+      if(ch==='"')q=true;
+      else if(ch===sep){out.push(cur);cur=''}
+      else cur+=ch;
+    }
+  }
+  out.push(cur);
+  return out;
+}
+function importCSV(ev){
+  const file=ev.target.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const raw=(e.target.result+'').replace(/^\uFEFF/,'');
+      if(!raw.trim()){
+        toast('Plik nie zawiera żadnych danych','err');haptic('error');return;
+      }
+      const lines=raw.split(/\r\n|\r|\n/).filter(l=>l.trim());
+      if(!lines.length){
+        toast('Plik nie zawiera żadnych danych','err');haptic('error');return;
+      }
+
+      // separator: ; (polski Excel) lub , (reszta świata)
+      const sep = (lines[0].split(';').length >= lines[0].split(',').length) ? ';' : ',';
+
+      // czy pierwsza linia to nagłówek? jeśli tak — pomiń
+      const first=splitCSV(lines[0],sep).map(c=>c.trim().toLowerCase());
+      const isHeader = first[0]==='data' || first.includes('kwota') || first.includes('typ');
+      const body = isHeader ? lines.slice(1) : lines;
+
+      if(!body.length){
+        toast('Plik ma tylko nagłówek — zero wpisów','err');haptic('error');return;
+      }
+
+      const staged=[];
+      const reasons={pola:0,data:0,typ:0,kwota:0};
+      body.forEach(line=>{
+        const p=splitCSV(line,sep);
+        if(p.length<5){reasons.pola++;return}
+        const dt=parseDate(p[0]);
+        if(!dt){reasons.data++;return}
+        const type=(p[1]||'').trim();
+        if(type!=='Wydatek'&&type!=='Przychód'){reasons.typ++;return}
+        const amount=parseFloat((p[4]||'').trim().replace(/\s/g,'').replace(/\u00a0/g,'').replace(',','.'));
+        if(!Number.isFinite(amount)||amount<=0){reasons.kwota++;return}
+        const cat = type==='Przychód' ? 'Przychód' : ((p[2]||'').trim()||'Inne');
+        staged.push({id:newId(),date:dt.toISOString(),type,cat,desc:(p[3]||'').trim()||'(bez opisu)',amount});
+      });
+
+      const bad=reasons.pola+reasons.data+reasons.typ+reasons.kwota;
+
+      if(!staged.length){
+        const why=[];
+        if(reasons.data)  why.push(`${reasons.data} zła data`);
+        if(reasons.typ)   why.push(`${reasons.typ} zły typ`);
+        if(reasons.kwota) why.push(`${reasons.kwota} zła kwota`);
+        if(reasons.pola)  why.push(`${reasons.pola} za mało kolumn`);
+        toast(why.length?`Odrzucono wszystko: ${why.join(', ')}`:'Brak wpisów w pliku','err');
+        haptic('error');
+        return;
+      }
+
+      // dopisz brakujące kategorie, żeby wpisy nie osierociały
+      const known=new Set(S.categories.map(c=>c.name));
+      let addedCats=0;
+      staged.forEach(t=>{
+        if(t.type==='Wydatek' && !known.has(t.cat)){
+          S.categories.push({name:t.cat,limit:0});
+          known.add(t.cat);addedCats++;
+        }
+      });
+      if(addedCats)saveS();
+
+      TX.push(...staged);
+      TX=TX.filter(isValidTx);
+      saveTX();
+
+      const n=staged.length;
+      let msg=`Wczytano ${n} ${plural(n,'wpis','wpisy','wpisów')}`;
+      if(bad)msg+=`, pominięto ${bad}`;
+      if(addedCats)msg+=`, +${addedCats} ${plural(addedCats,'kategoria','kategorie','kategorii')}`;
+      toast(msg, bad?'info':'ok');
+      haptic('success');
+
+      const now=new Date();
+      viewY=now.getFullYear();viewM=now.getMonth();
+      renderAll();
+    }catch(err){
+      toast('Nie udało się odczytać pliku','err');
+      haptic('error');
+    }
+  };
+  reader.onerror=()=>{toast('Nie udało się odczytać pliku','err');haptic('error')};
+  reader.readAsText(file,'utf-8');
+  ev.target.value='';
+}
+function clearAll(){
+  if(!TX.length){toast('Nie ma czego usuwać','info');return}
+  const n=TX.length;
+  if(!confirm(`Usunąć wszystkie wpisy (${n})?\nSaldo, wydatki i statystyki wrócą do zera.\nTego nie da się cofnąć.`))return;
+  TX=[];
+  saveTX();
+  // wróć na bieżący miesiąc — inaczej statystyki wiszą na pustym archiwum
+  const now=new Date();
+  viewY=now.getFullYear();viewM=now.getMonth();
+  trendRange=6;
+  document.querySelectorAll('#range-tabs button').forEach(b=>b.classList.toggle('active',+b.dataset.r===6));
+  toast(`Usunięto ${n} ${plural(n,'wpis','wpisy','wpisów')}`,'info');
+  haptic('medium');
+  renderAll();
+}
+/* polska odmiana: 1 wpis, 2-4 wpisy, 5+ wpisów */
+function plural(n,one,few,many){
+  if(n===1)return one;
+  const t=n%10,h=n%100;
+  if(t>=2&&t<=4&&!(h>=12&&h<=14))return few;
+  return many;
+}
 
 /* ════════ nav + toast ════════ */
 function nav(p){const idx=PAGES.indexOf(p);if(idx>=0)snapTo(idx)}
