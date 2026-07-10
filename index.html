@@ -478,6 +478,25 @@ textarea.field{resize:none;min-height:50px}
 }
 .cat-set-recur{font-size:10px;color:var(--txt-faint);margin-left:5px}
 
+/* ═══ arkusz przywracania ═══ */
+.restore-summary{
+  background:rgba(230,240,225,.04);border:1px solid var(--border);
+  border-radius:14px;padding:13px 15px;
+}
+.rs-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:13px}
+.rs-row+.rs-row{border-top:1px solid rgba(230,240,225,.055)}
+.rs-name{color:var(--txt-dim);font-weight:500;letter-spacing:-.005em}
+.rs-val{font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.rs-meta{
+  margin-top:11px;padding-top:10px;border-top:1px solid rgba(230,240,225,.055);
+  font-size:11.5px;color:var(--txt-faint);text-align:center;letter-spacing:-.003em;
+}
+.restore-note{
+  font-size:11.5px;color:var(--txt-faint);line-height:1.45;
+  margin-top:6px;padding:0 3px;letter-spacing:-.003em;
+}
+body.kb-open .restore-summary{padding:10px 13px}
+
 /* toast */
 .toast{
   position:fixed;bottom:calc(var(--nav-h) + 26px);left:50%;z-index:60;transform:translateX(-50%);
@@ -631,12 +650,12 @@ body.kb-open .toast{bottom:calc(var(--kb,0px) + 18px)}
       <div class="glass set-card" id="words-settings"></div>
       <div class="set-group" style="margin-top:18px"><div class="eyebrow">Dane</div></div>
       <div class="glass set-card">
-        <div class="set-row"><div><div class="set-label">Zapisz kopię CSV</div><div class="set-sub">Otwiera się w Excelu</div></div><button class="icon-btn" onclick="exportCSV()" aria-label="Eksportuj">↓</button></div>
-        <div class="set-row"><div><div class="set-label">Wczytaj kopię CSV</div><div class="set-sub">Dopisuje do istniejących wpisów</div></div><button class="icon-btn" onclick="document.getElementById('import-file').click()" aria-label="Importuj">↑</button></div>
+        <div class="set-row"><div><div class="set-label">Zapisz kopię zapasową</div><div class="set-sub" id="backup-sub">—</div></div><button class="icon-btn" onclick="exportBackup()" aria-label="Zapisz kopię">↓</button></div>
+        <div class="set-row"><div><div class="set-label">Wczytaj kopię zapasową</div><div class="set-sub">Wpisy, kategorie, limity, słowa</div></div><button class="icon-btn" onclick="document.getElementById('import-file').click()" aria-label="Wczytaj kopię">↑</button></div>
         <div class="set-row"><div><div class="set-label" style="color:var(--red)">Usuń wszystkie wpisy</div><div class="set-sub">Nie da się cofnąć</div></div><button class="icon-btn danger" onclick="clearAll()" aria-label="Wyczyść">✕</button></div>
       </div>
-      <input type="file" id="import-file" accept=".csv,text/csv" style="display:none" onchange="importCSV(event)">
-      <div style="text-align:center;color:var(--txt-faint);font-size:11.5px;margin-top:18px;line-height:1.6">Dane trzymane tylko na tym urządzeniu.<br>Zapisuj kopię CSV, żeby ich nie stracić.</div>
+      <input type="file" id="import-file" accept=".json,application/json" style="display:none" onchange="importBackup(event)">
+      <div style="text-align:center;color:var(--txt-faint);font-size:11.5px;margin-top:18px;line-height:1.6">Dane trzymane tylko na tym urządzeniu.<br>Zapisuj kopię zapasową, żeby ich nie stracić.</div>
     </div>
    </div>
   </div>
@@ -689,6 +708,18 @@ body.kb-open .toast{bottom:calc(var(--kb,0px) + 18px)}
   <div class="chip-grid" id="move-cats"></div>
   <button class="btn-primary" style="margin-top:10px" onclick="confirmMove()">Przenieś i usuń kategorię</button>
   <button class="btn-ghost" style="margin-top:9px" onclick="closeMove()">Anuluj</button>
+</div>
+
+<div class="sheet-scrim" id="rscrim" onclick="closeRestore()"></div>
+<div class="sheet" id="rsheet" role="dialog" aria-label="Wczytaj kopię">
+  <div class="grabber"></div><h2>Wczytaj kopię</h2>
+  <div class="hint" id="restore-hint">—</div>
+  <div class="restore-summary" id="restore-summary"></div>
+  <button class="btn-primary" style="margin-top:14px" onclick="applyRestore('replace')">Zastąp wszystko</button>
+  <div class="restore-note">Bieżące wpisy i ustawienia znikną. Zostanie dokładnie to, co w pliku.</div>
+  <button class="btn-ghost" style="margin-top:12px" onclick="applyRestore('merge')">Dopisz transakcje</button>
+  <div class="restore-note">Ustawienia zostają Twoje. Dojdą tylko wpisy, których jeszcze nie masz.</div>
+  <button class="btn-ghost" style="margin-top:14px;color:var(--txt-dim)" onclick="closeRestore()">Anuluj</button>
 </div>
 
 <input type="checkbox" id="haptic-switch" switch style="position:absolute;opacity:0;pointer-events:none;width:0;height:0" aria-hidden="true" tabindex="-1">
@@ -1185,6 +1216,7 @@ function renderSettings(){
 
   renderWeeklyPreview();
   renderLimitsBar();
+  renderBackupSub();
 
   const skip=recurCats();
   document.getElementById('cat-settings').innerHTML=S.categories.map((c,i)=>{
@@ -1199,6 +1231,16 @@ function renderSettings(){
   document.getElementById('recur-settings').innerHTML=S.recur.length?S.recur.map((r,i)=>`<div class="set-row" style="flex-wrap:wrap;gap:8px"><input class="set-input wide" style="flex:1 1 100%" value="${esc(r.name)}" onchange="editRecur(${i},'name',this.value)"><input class="set-input" style="width:78px" type="number" inputmode="decimal" value="${r.amount}" onchange="editRecur(${i},'amount',this.value)"><select class="set-input" style="width:auto;flex:1;text-align:left" onchange="editRecur(${i},'cat',this.value)">${S.categories.map(c=>`<option ${c.name===r.cat?'selected':''}>${esc(c.name)}</option>`).join('')}</select><input class="set-input" style="width:56px" type="number" inputmode="numeric" min="1" max="28" value="${r.day}" onchange="editRecur(${i},'day',this.value)" title="Dzień miesiąca"><button class="icon-btn danger" onclick="delRecur(${i})" aria-label="Usuń rachunek">✕</button></div>`).join(''):'<div style="padding:14px 0;color:var(--txt-faint);font-size:12.5px">Brak rachunków cyklicznych</div>';
 
   renderWords();
+}
+
+/* ═══ co trafi do kopii zapasowej ═══ */
+function renderBackupSub(){
+  const el=document.getElementById('backup-sub');
+  if(!el)return;
+  const n=TX.length, c=S.categories.length, w=Object.keys(WORDS).length;
+  el.textContent = n
+    ? `${n} ${plural(n,'wpis','wpisy','wpisów')}, ${c} ${plural(c,'kategoria','kategorie','kategorii')}, ${w} ${plural(w,'słowo','słowa','słów')}`
+    : `Brak wpisów — same ustawienia`;
 }
 
 /* ═══ podgląd limitu tygodniowego pod polem miesięcznym ═══ */
@@ -1298,42 +1340,57 @@ function addRecur(){S.recur.push({name:'Nowy rachunek',amount:0,cat:S.categories
 function applyRecurNow(){const now=new Date(),y=now.getFullYear(),m=now.getMonth();let added=0;S.recur.forEach(r=>{if(!(r.amount>0))return;const key=`${y}-${m}-${r.name}`;if(TX.some(t=>t.recurKey===key))return;const day=Math.min(Math.max(1,r.day||1),28);TX.push({id:newId(),date:new Date(y,m,day,12,0,0).toISOString(),type:'Wydatek',cat:r.cat,desc:`${r.name} (cykliczne)`,amount:r.amount,recurKey:key});added++});if(added){saveTX();toast(`Dopisano ${added} ${added===1?'rachunek':'rachunków'}`,'ok');haptic('success')}else toast('Wszystkie już dopisane','info');refresh()}
 
 /* ════════ CSV ════════ */
-function exportCSV(){
-  if(!TX.length){
-    toast('Brak wpisów do zapisania','err');
-    haptic('error');
-    return;
-  }
-  const q = s => {                       // cytuj, gdy trzeba
-    s = (s==null?'':String(s));
-    return /[;"\r\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
-  };
-  const rows=[['Data','Typ','Kategoria','Opis','Kwota']];
-  [...TX].sort((a,b)=>new Date(a.date)-new Date(b.date)).forEach(t=>{
-    const d=new Date(t.date);
-    rows.push([
-      `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,
-      t.type, t.cat, q(t.desc),
-      String(t.amount).replace('.',',')
-    ]);
-  });
-  // BOM dla Excela + CRLF + końcowy newline
-  const csv='\uFEFF'+rows.map(r=>r.join(';')).join('\r\n')+'\r\n';
-  const name='budzet_'+new Date().toISOString().slice(0,10)+'.csv';
-  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+/* ════════════════ KOPIA ZAPASOWA (JSON) ════════════════
+   Jeden plik = pełny stan aplikacji. Trzy klucze localStorage plus metadane. */
+const BACKUP_VERSION = 1;
 
-  // iOS Safari: Web Share API zapisuje plik poprawnie, a.download bywa ignorowane
-  const file = (typeof File!=='undefined') ? new File([blob],name,{type:'text/csv'}) : null;
+function buildBackup(){
+  return {
+    app:'budzet',
+    version:BACKUP_VERSION,
+    exportedAt:new Date().toISOString(),
+    settings:{
+      schema:S.schema,
+      monthly:S.monthly,
+      threshold:S.threshold,
+      currency:S.currency,
+      categories:S.categories.map(c=>({name:c.name,limit:c.limit})),
+      recur:S.recur.map(r=>({name:r.name,amount:r.amount,cat:r.cat,day:r.day}))
+    },
+    words:{...WORDS},
+    transactions:[...TX].sort((a,b)=>new Date(a.date)-new Date(b.date))
+      .map(t=>{
+        const o={id:t.id,date:t.date,type:t.type,cat:t.cat,desc:t.desc,amount:t.amount};
+        if(t.recurKey)o.recurKey=t.recurKey;
+        return o;
+      })
+  };
+}
+
+function exportBackup(){
+  if(!TX.length && !Object.keys(WORDS).length){
+    if(!confirm('Kopia będzie zawierać tylko ustawienia — brak wpisów i nauczonych słów.\nZapisać mimo to?'))return;
+  }
+  const data=buildBackup();
+  const json=JSON.stringify(data,null,2);
+  const name='budzet_kopia_'+new Date().toISOString().slice(0,10)+'.json';
+  const blob=new Blob([json],{type:'application/json'});
+
+  const nTx=data.transactions.length, nCat=data.settings.categories.length, nW=Object.keys(data.words).length;
+  const msg=`Zapisano ${nTx} ${plural(nTx,'wpis','wpisy','wpisów')} i ustawienia`;
+
+  const file=(typeof File!=='undefined')?new File([blob],name,{type:'application/json'}):null;
   if(IS_IOS && file && navigator.canShare && navigator.canShare({files:[file]})){
     navigator.share({files:[file],title:'Kopia budżetu'})
-      .then(()=>{toast(`Zapisano ${TX.length} ${plural(TX.length,'wpis','wpisy','wpisów')}`,'ok');haptic('success')})
+      .then(()=>{toast(msg,'ok');haptic('success')})
       .catch(err=>{ if(err && err.name!=='AbortError') downloadBlob(blob,name); });
     return;
   }
   downloadBlob(blob,name);
-  toast(`Zapisano ${TX.length} ${plural(TX.length,'wpis','wpisy','wpisów')}`,'ok');
+  toast(msg,'ok');
   haptic('success');
 }
+
 function downloadBlob(blob,name){
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
@@ -1343,114 +1400,191 @@ function downloadBlob(blob,name){
   document.body.removeChild(a);
   setTimeout(()=>URL.revokeObjectURL(url),4000);
 }
-const ISO_DATE=/^(\d{4})-(\d{2})-(\d{2})$/;
-function parseDate(s){const m=ISO_DATE.exec((s||'').trim());if(!m)return null;const y=+m[1],mo=+m[2]-1,d=+m[3];if(mo<0||mo>11||d<1||d>31)return null;const dt=new Date(y,mo,d,12,0,0);if(dt.getFullYear()!==y||dt.getMonth()!==mo||dt.getDate()!==d)return null;return dt}
-function splitCSV(line,sep){
-  sep=sep||';';
-  const out=[];let cur='',q=false;
-  for(let i=0;i<line.length;i++){
-    const ch=line[i];
-    if(q){
-      if(ch==='"'){ if(line[i+1]==='"'){cur+='"';i++} else q=false; }
-      else cur+=ch;
-    }else{
-      if(ch==='"')q=true;
-      else if(ch===sep){out.push(cur);cur=''}
-      else cur+=ch;
-    }
+
+/* ─── walidacja: nie ufamy niczemu z pliku ─── */
+function validateBackup(raw){
+  if(!raw || typeof raw!=='object') throw new Error('To nie jest kopia budżetu');
+  if(raw.app!=='budzet') throw new Error('Plik pochodzi z innej aplikacji');
+  if(!Number.isFinite(raw.version) || raw.version>BACKUP_VERSION)
+    throw new Error('Kopia z nowszej wersji aplikacji');
+
+  const s=raw.settings;
+  if(!s || typeof s!=='object') throw new Error('Brak ustawień w pliku');
+
+  const cats=Array.isArray(s.categories)
+    ? s.categories.filter(c=>c&&typeof c.name==='string'&&c.name.trim())
+        .map(c=>({name:c.name.trim(),limit:Math.max(0,parseFloat(c.limit)||0)}))
+    : [];
+  if(!cats.length) throw new Error('Kopia nie zawiera kategorii');
+
+  const catNames=new Set(cats.map(c=>c.name));
+
+  const recur=Array.isArray(s.recur)
+    ? s.recur.filter(r=>r&&typeof r.name==='string')
+        .map(r=>({
+          name:r.name.trim()||'Rachunek',
+          amount:Math.max(0,parseFloat(r.amount)||0),
+          cat:catNames.has(r.cat)?r.cat:cats[0].name,
+          day:Math.min(28,Math.max(1,parseInt(r.day)||1))
+        }))
+    : [];
+
+  const words={};
+  if(raw.words && typeof raw.words==='object'){
+    Object.entries(raw.words).forEach(([w,c])=>{
+      if(typeof w==='string' && typeof c==='string' && w.trim() && c.trim()) words[w.trim()]=c.trim();
+    });
   }
-  out.push(cur);
-  return out;
+
+  const seen=new Set();
+  const tx=[];
+  let skipped=0;
+  (Array.isArray(raw.transactions)?raw.transactions:[]).forEach(t=>{
+    if(!t||typeof t!=='object'){skipped++;return}
+    const amount=parseFloat(t.amount);
+    const date=new Date(t.date);
+    if(!Number.isFinite(amount)||amount<=0){skipped++;return}
+    if(isNaN(date.getTime())){skipped++;return}
+    if(t.type!=='Wydatek'&&t.type!=='Przychód'){skipped++;return}
+    const id=(typeof t.id==='string'&&t.id)?t.id:newId();
+    if(seen.has(id)){skipped++;return}
+    seen.add(id);
+    const o={
+      id, date:date.toISOString(), type:t.type,
+      cat: t.type==='Przychód' ? 'Przychód' : (typeof t.cat==='string'&&t.cat.trim()?t.cat.trim():'Inne'),
+      desc:(typeof t.desc==='string'&&t.desc.trim())?t.desc.trim():'(bez opisu)',
+      amount
+    };
+    if(typeof t.recurKey==='string')o.recurKey=t.recurKey;
+    tx.push(o);
+  });
+
+  return {
+    settings:{
+      schema: Number.isFinite(s.schema)?s.schema:2,
+      monthly: Math.max(0,parseFloat(s.monthly)||0),
+      threshold: Math.min(100,Math.max(1,parseFloat(s.threshold)||80)),
+      currency: (typeof s.currency==='string'&&s.currency.trim())?s.currency.trim():'zł',
+      categories:cats, recur
+    },
+    words, transactions:tx, skipped,
+    exportedAt: typeof raw.exportedAt==='string'?raw.exportedAt:null
+  };
 }
-function importCSV(ev){
+
+/* ─── import: wczytaj, pokaż podsumowanie, zapytaj ─── */
+let pendingRestore=null;
+
+function importBackup(ev){
   const file=ev.target.files[0];
+  ev.target.value='';
   if(!file)return;
   const reader=new FileReader();
   reader.onload=e=>{
-    try{
-      const raw=(e.target.result+'').replace(/^\uFEFF/,'');
-      if(!raw.trim()){
-        toast('Plik nie zawiera żadnych danych','err');haptic('error');return;
-      }
-      const lines=raw.split(/\r\n|\r|\n/).filter(l=>l.trim());
-      if(!lines.length){
-        toast('Plik nie zawiera żadnych danych','err');haptic('error');return;
-      }
+    let parsed;
+    try{ parsed=JSON.parse(e.target.result); }
+    catch(err){ toast('Plik nie jest poprawnym JSON-em','err');haptic('error');return; }
+    let v;
+    try{ v=validateBackup(parsed); }
+    catch(err){ toast(err.message,'err');haptic('error');return; }
 
-      // separator: ; (polski Excel) lub , (reszta świata)
-      const sep = (lines[0].split(';').length >= lines[0].split(',').length) ? ';' : ',';
-
-      // czy pierwsza linia to nagłówek? jeśli tak — pomiń
-      const first=splitCSV(lines[0],sep).map(c=>c.trim().toLowerCase());
-      const isHeader = first[0]==='data' || first.includes('kwota') || first.includes('typ');
-      const body = isHeader ? lines.slice(1) : lines;
-
-      if(!body.length){
-        toast('Plik ma tylko nagłówek — zero wpisów','err');haptic('error');return;
-      }
-
-      const staged=[];
-      const reasons={pola:0,data:0,typ:0,kwota:0};
-      body.forEach(line=>{
-        const p=splitCSV(line,sep);
-        if(p.length<5){reasons.pola++;return}
-        const dt=parseDate(p[0]);
-        if(!dt){reasons.data++;return}
-        const type=(p[1]||'').trim();
-        if(type!=='Wydatek'&&type!=='Przychód'){reasons.typ++;return}
-        const amount=parseFloat((p[4]||'').trim().replace(/\s/g,'').replace(/\u00a0/g,'').replace(',','.'));
-        if(!Number.isFinite(amount)||amount<=0){reasons.kwota++;return}
-        const cat = type==='Przychód' ? 'Przychód' : ((p[2]||'').trim()||'Inne');
-        staged.push({id:newId(),date:dt.toISOString(),type,cat,desc:(p[3]||'').trim()||'(bez opisu)',amount});
-      });
-
-      const bad=reasons.pola+reasons.data+reasons.typ+reasons.kwota;
-
-      if(!staged.length){
-        const why=[];
-        if(reasons.data)  why.push(`${reasons.data} zła data`);
-        if(reasons.typ)   why.push(`${reasons.typ} zły typ`);
-        if(reasons.kwota) why.push(`${reasons.kwota} zła kwota`);
-        if(reasons.pola)  why.push(`${reasons.pola} za mało kolumn`);
-        toast(why.length?`Odrzucono wszystko: ${why.join(', ')}`:'Brak wpisów w pliku','err');
-        haptic('error');
-        return;
-      }
-
-      // dopisz brakujące kategorie, żeby wpisy nie osierociały
-      const known=new Set(S.categories.map(c=>c.name));
-      let addedCats=0;
-      staged.forEach(t=>{
-        if(t.type==='Wydatek' && !known.has(t.cat)){
-          S.categories.push({name:t.cat,limit:0});
-          known.add(t.cat);addedCats++;
-        }
-      });
-      if(addedCats)saveS();
-
-      TX.push(...staged);
-      TX=TX.filter(isValidTx);
-      saveTX();
-
-      const n=staged.length;
-      let msg=`Wczytano ${n} ${plural(n,'wpis','wpisy','wpisów')}`;
-      if(bad)msg+=`, pominięto ${bad}`;
-      if(addedCats)msg+=`, +${addedCats} ${plural(addedCats,'kategoria','kategorie','kategorii')}`;
-      toast(msg, bad?'info':'ok');
-      haptic('success');
-
-      const now=new Date();
-      viewY=now.getFullYear();viewM=now.getMonth();
-      renderAll();
-    }catch(err){
-      toast('Nie udało się odczytać pliku','err');
-      haptic('error');
-    }
+    pendingRestore=v;
+    openRestore(v);
   };
   reader.onerror=()=>{toast('Nie udało się odczytać pliku','err');haptic('error')};
   reader.readAsText(file,'utf-8');
-  ev.target.value='';
 }
+
+function openRestore(v){
+  const nTx=v.transactions.length;
+  const newTx=v.transactions.filter(t=>!TX.some(x=>x.id===t.id)).length;
+  const nCat=v.settings.categories.length;
+  const nRec=v.settings.recur.length;
+  const nW=Object.keys(v.words).length;
+
+  document.getElementById('restore-hint').textContent =
+    v.skipped ? `Odczytano kopię. ${v.skipped} ${plural(v.skipped,'wpis był uszkodzony','wpisy były uszkodzone','wpisów było uszkodzonych')} i został${v.skipped===1?'':'y'} pominięt${v.skipped===1?'y':'e'}.`
+              : 'Odczytano kopię. Wybierz, co z nią zrobić.';
+
+  let when='';
+  if(v.exportedAt){
+    const d=new Date(v.exportedAt);
+    if(!isNaN(d)) when=`Kopia z ${d.toLocaleDateString('pl-PL',{day:'numeric',month:'long',year:'numeric'})}`;
+  }
+
+  document.getElementById('restore-summary').innerHTML=`
+    <div class="rs-row"><span class="rs-name">Transakcje</span><span class="rs-val">${nTx}${newTx!==nTx?` <span style="color:var(--txt-faint);font-weight:500">(${newTx} nowych)</span>`:''}</span></div>
+    <div class="rs-row"><span class="rs-name">Kategorie</span><span class="rs-val">${nCat}</span></div>
+    <div class="rs-row"><span class="rs-name">Rachunki cykliczne</span><span class="rs-val">${nRec}</span></div>
+    <div class="rs-row"><span class="rs-name">Nauczone słowa</span><span class="rs-val">${nW}</span></div>
+    <div class="rs-row"><span class="rs-name">Limit miesięczny</span><span class="rs-val">${fmt(v.settings.monthly)} ${esc(v.settings.currency)}</span></div>
+    ${when?`<div class="rs-meta">${when}</div>`:''}`;
+
+  document.getElementById('rscrim').classList.add('open');
+  document.getElementById('rsheet').classList.add('open');
+  haptic('medium');
+}
+
+function closeRestore(){
+  blurActive();
+  document.getElementById('rscrim').classList.remove('open');
+  document.getElementById('rsheet').classList.remove('open');
+  pendingRestore=null;
+}
+
+function applyRestore(mode){
+  const v=pendingRestore;
+  if(!v){closeRestore();return}
+
+  if(mode==='replace'){
+    if(!confirm(`Zastąpić wszystko?\nBieżące ${TX.length} ${plural(TX.length,'wpis','wpisy','wpisów')} i ustawienia zostaną usunięte.`))return;
+    S={...v.settings};
+    WORDS={...v.words};
+    TX=v.transactions.filter(isValidTx);
+    saveS();saveW();saveTX();
+    closeRestore();
+    toast(`Przywrócono ${TX.length} ${plural(TX.length,'wpis','wpisy','wpisów')} i ustawienia`,'ok');
+  } else {
+    /* scalanie: po id, a gdy id się powtarza — po treści */
+    const sig=t=>`${t.date}|${t.type}|${t.cat}|${t.desc}|${t.amount}`;
+    const haveIds=new Set(TX.map(t=>t.id));
+    const haveSigs=new Set(TX.map(sig));
+    const fresh=v.transactions.filter(t=>!haveIds.has(t.id) && !haveSigs.has(sig(t)));
+
+    /* kategorie, których nie mamy — dopisz, żeby wpisy nie osierociały */
+    const known=new Set(S.categories.map(c=>c.name));
+    let addedCats=0;
+    fresh.forEach(t=>{
+      if(t.type==='Wydatek' && !known.has(t.cat)){
+        S.categories.push({name:t.cat,limit:0});
+        known.add(t.cat);addedCats++;
+      }
+    });
+
+    if(!fresh.length && !addedCats){
+      closeRestore();
+      toast('Wszystkie wpisy z kopii już masz','info');
+      haptic('medium');
+      return;
+    }
+
+    TX.push(...fresh);
+    TX=TX.filter(isValidTx);
+    if(addedCats)saveS();
+    saveTX();
+    closeRestore();
+
+    let msg=`Dopisano ${fresh.length} ${plural(fresh.length,'wpis','wpisy','wpisów')}`;
+    if(addedCats)msg+=`, +${addedCats} ${plural(addedCats,'kategoria','kategorie','kategorii')}`;
+    toast(msg,'ok');
+  }
+
+  haptic('success');
+  const now=new Date();
+  viewY=now.getFullYear();viewM=now.getMonth();
+  renderAll();
+}
+
 function clearAll(){
   if(!TX.length){toast('Nie ma czego usuwać','info');return}
   const n=TX.length;
@@ -1499,7 +1633,7 @@ document.getElementById('s-threshold').addEventListener('change',e=>{S.threshold
 document.getElementById('s-currency').addEventListener('change',e=>{S.currency=e.target.value.trim()||'zł';saveS();refresh()});
 document.getElementById('in-text').addEventListener('input',function(){this.style.height='auto';this.style.height=this.scrollHeight+'px'});
 document.getElementById('i-amount').addEventListener('keydown',e=>{if(e.key==='Enter')saveIncome()});
-document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;closeSheet();closeIncome();closeEdit();closeMove()});
+document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;closeSheet();closeIncome();closeEdit();closeMove();closeRestore()});
 
 /* ════════ boot ════════ */
 /* ════════ klawiatura iOS ════════
