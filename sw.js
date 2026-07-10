@@ -1,4 +1,4 @@
-const CACHE = 'budzet-v9';
+const CACHE = 'budzet-v10';
 const ASSETS = ['./', './index.html', './manifest.webmanifest'];
 
 self.addEventListener('install', e => {

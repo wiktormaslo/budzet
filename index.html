@@ -268,8 +268,8 @@ h1.title{font-size:32px;font-weight:640;letter-spacing:-.028em;line-height:1.1}
   display:flex;justify-content:space-around;align-items:flex-start;
   height:var(--nav-h);
   padding:7px calc(8px + var(--safe-left)) 0 calc(8px + var(--safe-right));
-  transform:translateY(var(--kb));
-  transition:transform .28s var(--ease);
+  transform:translateY(0);
+  transition:transform .3s var(--ease),opacity .22s var(--ease);
   background:linear-gradient(180deg, rgba(16,19,16,.72), rgba(16,19,16,.94) 60%);
   backdrop-filter:blur(34px) saturate(160%);-webkit-backdrop-filter:blur(34px) saturate(160%);
   border-top:1px solid var(--border);
@@ -290,17 +290,38 @@ h1.title{font-size:32px;font-weight:640;letter-spacing:-.028em;line-height:1.1}
 .sheet-scrim.open{opacity:1;pointer-events:auto}
 .sheet{
   position:fixed;left:0;right:0;bottom:0;z-index:51;
-  background:rgba(19,23,19,.95);backdrop-filter:blur(44px) saturate(160%);-webkit-backdrop-filter:blur(44px) saturate(160%);
+  background:rgba(19,23,19,.96);
+  backdrop-filter:blur(44px) saturate(160%);-webkit-backdrop-filter:blur(44px) saturate(160%);
   border-top:1px solid var(--border-strong);border-radius:28px 28px 0 0;
   box-shadow:0 -12px 44px rgba(0,0,0,.55),inset 0 1px 0 var(--highlight);
+
+  /* Padding dolny tylko na home indicator — gdy klawiatura otwarta,
+     arkusz stoi już nad nią, więc safe-bottom nie jest potrzebny. */
   padding:9px calc(20px + var(--safe-left)) calc(20px + var(--safe-bottom)) calc(20px + var(--safe-right));
+
+  /* Cały arkusz jedzie w górę o wysokość klawiatury. */
   transform:translate3d(0,100%,0);
-  transition:transform .46s var(--spring);
-  max-height:calc(100dvh - var(--safe-top) - 24px);
+  transition:transform .46s var(--spring), max-height .28s var(--ease);
+
+  /* Zmieści się między wyspą a klawiaturą: ekran − wyspa − klawiatura − oddech */
+  max-height:calc(100dvh - var(--safe-top) - var(--kb,0px) - 20px);
   overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
-  padding-bottom:calc(20px + var(--safe-bottom) + var(--kb-pad,0px));
 }
-.sheet.open{transform:translate3d(0,0,0)}
+.sheet.open{transform:translate3d(0, calc(-1 * var(--kb,0px)), 0)}
+
+/* z klawiaturą: brak dolnego safe-area (indicator jest pod klawiaturą),
+   ciaśniejsze odstępy, żeby wszystko się mieściło */
+body.kb-open .sheet{
+  padding-bottom:14px;
+  border-radius:24px 24px 0 0;
+}
+body.kb-open .sheet .grabber{margin:4px auto 10px}
+body.kb-open .sheet h2{font-size:19px;margin-bottom:3px}
+body.kb-open .sheet .hint{margin-bottom:12px;font-size:12.5px;line-height:1.4}
+body.kb-open .sheet .field{margin-bottom:9px;padding:12px 15px}
+body.kb-open .sheet .btn-primary{padding:14px}
+body.kb-open .sheet .chip{padding:8px 12px;font-size:13px}
+body.kb-open .sheet .q-block{padding:12px;margin-bottom:10px}
 .grabber{width:34px;height:4px;border-radius:3px;background:rgba(255,255,255,.20);margin:6px auto 15px}
 .sheet h2{font-size:21px;font-weight:640;letter-spacing:-.024em;margin-bottom:5px}
 .sheet .hint{font-size:13px;color:var(--txt-dim);margin-bottom:17px;line-height:1.45;letter-spacing:-.005em}
@@ -480,10 +501,8 @@ textarea.field{resize:none;min-height:50px}
 :focus-visible{outline:2px solid #5FA47C;outline-offset:2px}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}.blob{animation:none}}
 /* ═══ klawiatura otwarta ═══ */
-body.kb-open .nav{opacity:0;pointer-events:none}
-body.kb-open .nav{opacity:0;pointer-events:none}
-body.kb-open .toast{bottom:calc(var(--kb) + 20px)}
-.sheet{padding-bottom:calc(20px + var(--safe-bottom) + var(--kb-pad,0px))}
+body.kb-open .nav{opacity:0;pointer-events:none;transform:translateY(100%)}
+body.kb-open .toast{bottom:calc(var(--kb,0px) + 18px)}
 
 /* ═══ iPhone 17 Pro: 402 × 874 pt ═══ */
 @media only screen and (min-device-width:402px) and (max-device-width:440px){
@@ -1078,7 +1097,7 @@ function parse(text){
 /* ════════ sheet: expense ════════ */
 let pendingParse=null;
 function openSheet(){pendingParse=null;const ta=document.getElementById('in-text');ta.value='';ta.style.height='auto';document.getElementById('parse-preview').innerHTML='';document.getElementById('cat-question').innerHTML='';document.getElementById('scrim').classList.add('open');document.getElementById('sheet').classList.add('open');haptic('light');setTimeout(()=>ta.focus(),320)}
-function closeSheet(){document.getElementById('scrim').classList.remove('open');document.getElementById('sheet').classList.remove('open')}
+function closeSheet(){blurActive();document.getElementById('scrim').classList.remove('open');document.getElementById('sheet').classList.remove('open')}
 function autoParse(){
   const text=document.getElementById('in-text').value.trim(),prev=document.getElementById('parse-preview'),q=document.getElementById('cat-question');
   if(!text){prev.innerHTML='';q.innerHTML='';pendingParse=null;return}
@@ -1098,7 +1117,7 @@ function saveEntry(){
 
 /* ════════ sheet: income ════════ */
 function openIncome(){document.getElementById('i-desc').value='';document.getElementById('i-amount').value='';document.getElementById('iscrim').classList.add('open');document.getElementById('isheet').classList.add('open');haptic('light');setTimeout(()=>document.getElementById('i-desc').focus(),320)}
-function closeIncome(){document.getElementById('iscrim').classList.remove('open');document.getElementById('isheet').classList.remove('open')}
+function closeIncome(){blurActive();document.getElementById('iscrim').classList.remove('open');document.getElementById('isheet').classList.remove('open')}
 function saveIncome(){
   const desc=document.getElementById('i-desc').value.trim()||'Przychód';const amt=parseFloat((document.getElementById('i-amount').value+'').replace(',','.'));
   if(!Number.isFinite(amt)||amt<=0){toast('Wpisz kwotę większą od zera','err');return}
@@ -1118,7 +1137,7 @@ function renderHist(){
 /* ════════ sheet: edit ════════ */
 let editId=null,eType='Wydatek',eCat=null;
 function openEdit(id){const t=TX.find(x=>x.id===id);if(!t)return;editId=id;eType=t.type;eCat=t.cat;document.getElementById('e-desc').value=t.desc;document.getElementById('e-amount').value=t.amount;document.getElementById('e-hint').textContent=t.type==='Przychód'?'Przychód — bez kategorii.':'Zmień opis, kwotę lub kategorię.';document.getElementById('e-cat-block').style.display=t.type==='Przychód'?'none':'';renderECats();document.getElementById('escrim').classList.add('open');document.getElementById('esheet').classList.add('open');haptic('light')}
-function closeEdit(){document.getElementById('escrim').classList.remove('open');document.getElementById('esheet').classList.remove('open');editId=null}
+function closeEdit(){blurActive();document.getElementById('escrim').classList.remove('open');document.getElementById('esheet').classList.remove('open');editId=null}
 function renderECats(){if(eType==='Przychód')return;document.getElementById('e-cats').innerHTML=S.categories.map((c,i)=>`<button class="chip ${c.name===eCat?'sel':''}" onclick="eCat=S.categories[${i}].name;renderECats();haptic('light')">${CAT_ICONS[c.name]||''} ${esc(c.name)}</button>`).join('')}
 function saveEdit(){const t=TX.find(x=>x.id===editId);if(!t)return;const amt=parseFloat((document.getElementById('e-amount').value+'').replace(',','.'));if(!Number.isFinite(amt)||amt<=0){toast('Wpisz kwotę większą od zera','err');return}t.desc=document.getElementById('e-desc').value.trim()||'(bez opisu)';t.amount=amt;if(t.type==='Wydatek')t.cat=eCat||'Inne';saveTX();closeEdit();toast('Zapisano zmiany','ok');haptic('success');refresh()}
 function deleteEntry(){TX=TX.filter(x=>x.id!==editId);saveTX();closeEdit();toast('Wpis usunięty','info');haptic('medium');refresh()}
@@ -1271,7 +1290,7 @@ function delCat(i){
   renderMoveCats();document.getElementById('mscrim').classList.add('open');document.getElementById('msheet').classList.add('open');haptic('medium');
 }
 function renderMoveCats(){document.getElementById('move-cats').innerHTML=S.categories.map((c,i)=>({c,i})).filter(x=>x.i!==pendingDel.index).map(x=>`<button class="chip ${x.c.name===moveTarget?'sel':''}" onclick="moveTarget='${esc(x.c.name)}';renderMoveCats();haptic('light')">${CAT_ICONS[x.c.name]||''} ${esc(x.c.name)}</button>`).join('')}
-function closeMove(){document.getElementById('mscrim').classList.remove('open');document.getElementById('msheet').classList.remove('open');pendingDel=null;moveTarget=null}
+function closeMove(){blurActive();document.getElementById('mscrim').classList.remove('open');document.getElementById('msheet').classList.remove('open');pendingDel=null;moveTarget=null}
 function confirmMove(){if(!moveTarget){toast('Wybierz kategorię docelową','err');return}const from=pendingDel.name,to=moveTarget;TX.forEach(t=>{if(t.type==='Wydatek'&&t.cat===from)t.cat=to});Object.keys(WORDS).forEach(w=>{if(WORDS[w]===from)WORDS[w]=to});S.recur.forEach(r=>{if(r.cat===from)r.cat=to});S.categories.splice(pendingDel.index,1);saveS();saveTX();saveW();closeMove();toast(`Przeniesiono do „${to}"`,'ok');haptic('success');renderSettings();refresh()}
 function editRecur(i,k,v){if(k==='amount')S.recur[i].amount=Math.max(0,parseFloat((v+'').replace(',','.'))||0);else if(k==='day')S.recur[i].day=Math.min(28,Math.max(1,parseInt(v)||1));else S.recur[i][k]=v;saveS()}
 function delRecur(i){S.recur.splice(i,1);saveS();renderSettings();haptic('light')}
@@ -1484,40 +1503,69 @@ document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;closeSheet();
 
 /* ════════ boot ════════ */
 /* ════════ klawiatura iOS ════════
-   VisualViewport mówi, ile ekranu zjadła klawiatura.
-   Podnosimy tylko nav i padding arkusza — strona zostaje na miejscu,
-   więc Dynamic Island nigdy nie zasłania UI. */
+   VisualViewport podaje realną wysokość widocznego obszaru.
+   Zamiast paddingować arkusz od dołu, podnosimy go w całości o --kb.
+   Strona pod spodem nie rusza się, więc Dynamic Island nic nie zasłania. */
 function initKeyboard(){
   const vv=window.visualViewport;
-  if(!vv)return;
-  let raf=null;
-  const update=()=>{
-    if(raf)cancelAnimationFrame(raf);
-    raf=requestAnimationFrame(()=>{
-      const kb=Math.max(0,window.innerHeight-vv.height-vv.offsetTop);
-      const root=document.documentElement;
-      root.style.setProperty('--kb', kb>60?`${kb}px`:'0px');
-      root.style.setProperty('--kb-pad', kb>60?`${kb}px`:'0px');
-      document.body.classList.toggle('kb-open', kb>60);
-      // przewiń zawsze do góry ekranu wizualnego
-      if(kb>60)window.scrollTo(0,0);
-    });
+  if(!vv){document.documentElement.style.setProperty('--kb','0px');return;}
+
+  let raf=null, lastKb=-1;
+
+  const read=()=>{
+    /* layoutHeight − visualHeight − ile widok przewinięto = wysokość klawiatury.
+       offsetTop bywa >0 gdy iOS sam przewinie stronę; wliczamy go, żeby nie zawyżyć. */
+    const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+    return kb > 80 ? Math.round(kb) : 0;     // <80px to pasek narzędzi, nie klawiatura
   };
-  vv.addEventListener('resize',update);
-  vv.addEventListener('scroll',update);
-  update();
+
+  const apply=()=>{
+    raf=null;
+    const kb=read();
+    if(kb===lastKb)return;
+    lastKb=kb;
+    document.documentElement.style.setProperty('--kb', kb+'px');
+    document.body.classList.toggle('kb-open', kb>0);
+    /* iOS lubi przewinąć layout viewport — cofamy to */
+    if(window.scrollY!==0)window.scrollTo(0,0);
+  };
+
+  const schedule=()=>{ if(!raf)raf=requestAnimationFrame(apply); };
+
+  vv.addEventListener('resize',schedule);
+  vv.addEventListener('scroll',schedule);
+  apply();
 }
 
-/* iOS podnosi całą stronę przy fokusie inputa — blokujemy to */
+/* iOS przewija layout viewport, żeby pokazać input — zawsze cofamy */
 window.addEventListener('scroll',()=>{
   if(window.scrollY!==0)window.scrollTo(0,0);
 },{passive:true});
 
+/* Po otwarciu klawiatury upewnij się, że fokusowane pole jest widoczne
+   wewnątrz arkusza (arkusz sam się przewija). */
 document.addEventListener('focusin',e=>{
-  if(e.target.matches('input,textarea,select')){
-    setTimeout(()=>window.scrollTo(0,0),0);
-  }
+  const el=e.target;
+  if(!el.matches('input,textarea,select'))return;
+  window.scrollTo(0,0);
+  const sheet=el.closest('.sheet');
+  if(!sheet)return;
+  /* poczekaj aż --kb się ustawi i arkusz zmieni wysokość */
+  setTimeout(()=>{
+    window.scrollTo(0,0);
+    const r=el.getBoundingClientRect();
+    const s=sheet.getBoundingClientRect();
+    if(r.bottom > s.bottom - 8 || r.top < s.top + 8){
+      el.scrollIntoView({block:'center',behavior:'smooth'});
+    }
+  },340);
 });
+
+/* zamknięcie arkusza = zamknięcie klawiatury */
+function blurActive(){
+  const a=document.activeElement;
+  if(a && a.blur && a.matches('input,textarea,select'))a.blur();
+}
 
 /* pierwszy dotyk odblokowuje haptykę */
 document.addEventListener('touchstart',function once(){
