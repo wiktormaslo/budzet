@@ -681,7 +681,8 @@ body.kb-open .toast{bottom:calc(var(--kb,0px) + 18px)}
 <div class="sheet" id="sheet" role="dialog" aria-label="Nowy wydatek">
   <div class="grabber"></div><h2>Nowy wydatek</h2>
   <div class="hint">Napisz naturalnie, np. „8 monster mango loco". Kwotę i kategorię rozpoznam sam.</div>
-  <textarea class="field" id="in-text" placeholder="8 monster mango loco" rows="1" oninput="autoParse()" enterkeyhint="done"></textarea>
+  <textarea class="field" id="in-text" placeholder="8 monster mango loco" rows="1" oninput="autoParse()"
+            enterkeyhint="done" autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false"></textarea>
   <div id="parse-preview"></div><div id="cat-question"></div>
   <button class="btn-primary" onclick="saveEntry()">Zapisz wydatek</button>
 </div>
@@ -689,15 +690,19 @@ body.kb-open .toast{bottom:calc(var(--kb,0px) + 18px)}
 <div class="sheet" id="isheet" role="dialog" aria-label="Nowy przychód">
   <div class="grabber"></div><h2>Nowy przychód</h2>
   <div class="hint">Wypłata, zwrot, prezent — cokolwiek, co zwiększa saldo.</div>
-  <input class="field" id="i-desc" type="text" placeholder="Wypłata">
-  <input class="field num" id="i-amount" type="number" inputmode="decimal" placeholder="Kwota">
+  <input class="field" id="i-desc" type="text" placeholder="Wypłata"
+         enterkeyhint="next" autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false">
+  <input class="field num" id="i-amount" type="text" inputmode="decimal" placeholder="Kwota"
+         enterkeyhint="done" autocomplete="off" autocorrect="off" spellcheck="false">
   <button class="btn-primary income" onclick="saveIncome()">Zapisz przychód</button>
 </div>
 <div class="sheet-scrim" id="escrim" onclick="closeEdit()"></div>
 <div class="sheet" id="esheet" role="dialog" aria-label="Edycja wpisu">
   <div class="grabber"></div><h2>Zmień wpis</h2><div class="hint" id="e-hint">—</div>
-  <input class="field" id="e-desc" type="text" placeholder="Opis">
-  <input class="field num" id="e-amount" type="number" inputmode="decimal" placeholder="Kwota">
+  <input class="field" id="e-desc" type="text" placeholder="Opis"
+         enterkeyhint="next" autocomplete="off" autocorrect="off" spellcheck="false">
+  <input class="field num" id="e-amount" type="text" inputmode="decimal" placeholder="Kwota"
+         enterkeyhint="done" autocomplete="off" autocorrect="off" spellcheck="false">
   <div id="e-cat-block"><div class="eyebrow" style="margin:4px 0 10px">Kategoria</div><div class="chip-grid" id="e-cats"></div></div>
   <button class="btn-primary" style="margin-top:8px" onclick="saveEdit()">Zapisz zmiany</button>
   <button class="btn-ghost" style="margin-top:9px;color:var(--red)" onclick="deleteEntry()">Usuń wpis</button>
@@ -1150,7 +1155,7 @@ function saveEntry(){
 function openIncome(){document.getElementById('i-desc').value='';document.getElementById('i-amount').value='';document.getElementById('iscrim').classList.add('open');document.getElementById('isheet').classList.add('open');haptic('light');setTimeout(()=>document.getElementById('i-desc').focus(),320)}
 function closeIncome(){blurActive();document.getElementById('iscrim').classList.remove('open');document.getElementById('isheet').classList.remove('open')}
 function saveIncome(){
-  const desc=document.getElementById('i-desc').value.trim()||'Przychód';const amt=parseFloat((document.getElementById('i-amount').value+'').replace(',','.'));
+  const desc=document.getElementById('i-desc').value.trim()||'Przychód';const amt=parseFloat((document.getElementById('i-amount').value+'').replace(/[\s\u00a0]/g,'').replace(',','.'));
   if(!Number.isFinite(amt)||amt<=0){toast('Wpisz kwotę większą od zera','err');return}
   TX.push({id:newId(),date:new Date().toISOString(),type:'Przychód',cat:'Przychód',desc,amount:amt});
   saveTX();closeIncome();toast(`Dodano przychód ${fmt(amt)} ${S.currency}`,'ok');haptic('success');refresh();
@@ -1167,10 +1172,10 @@ function renderHist(){
 
 /* ════════ sheet: edit ════════ */
 let editId=null,eType='Wydatek',eCat=null;
-function openEdit(id){const t=TX.find(x=>x.id===id);if(!t)return;editId=id;eType=t.type;eCat=t.cat;document.getElementById('e-desc').value=t.desc;document.getElementById('e-amount').value=t.amount;document.getElementById('e-hint').textContent=t.type==='Przychód'?'Przychód — bez kategorii.':'Zmień opis, kwotę lub kategorię.';document.getElementById('e-cat-block').style.display=t.type==='Przychód'?'none':'';renderECats();document.getElementById('escrim').classList.add('open');document.getElementById('esheet').classList.add('open');haptic('light')}
+function openEdit(id){const t=TX.find(x=>x.id===id);if(!t)return;editId=id;eType=t.type;eCat=t.cat;document.getElementById('e-desc').value=t.desc;document.getElementById('e-amount').value=String(t.amount).replace('.',',');document.getElementById('e-hint').textContent=t.type==='Przychód'?'Przychód — bez kategorii.':'Zmień opis, kwotę lub kategorię.';document.getElementById('e-cat-block').style.display=t.type==='Przychód'?'none':'';renderECats();document.getElementById('escrim').classList.add('open');document.getElementById('esheet').classList.add('open');haptic('light')}
 function closeEdit(){blurActive();document.getElementById('escrim').classList.remove('open');document.getElementById('esheet').classList.remove('open');editId=null}
 function renderECats(){if(eType==='Przychód')return;document.getElementById('e-cats').innerHTML=S.categories.map((c,i)=>`<button class="chip ${c.name===eCat?'sel':''}" onclick="eCat=S.categories[${i}].name;renderECats();haptic('light')">${CAT_ICONS[c.name]||''} ${esc(c.name)}</button>`).join('')}
-function saveEdit(){const t=TX.find(x=>x.id===editId);if(!t)return;const amt=parseFloat((document.getElementById('e-amount').value+'').replace(',','.'));if(!Number.isFinite(amt)||amt<=0){toast('Wpisz kwotę większą od zera','err');return}t.desc=document.getElementById('e-desc').value.trim()||'(bez opisu)';t.amount=amt;if(t.type==='Wydatek')t.cat=eCat||'Inne';saveTX();closeEdit();toast('Zapisano zmiany','ok');haptic('success');refresh()}
+function saveEdit(){const t=TX.find(x=>x.id===editId);if(!t)return;const amt=parseFloat((document.getElementById('e-amount').value+'').replace(/[\s\u00a0]/g,'').replace(',','.'));if(!Number.isFinite(amt)||amt<=0){toast('Wpisz kwotę większą od zera','err');return}t.desc=document.getElementById('e-desc').value.trim()||'(bez opisu)';t.amount=amt;if(t.type==='Wydatek')t.cat=eCat||'Inne';saveTX();closeEdit();toast('Zapisano zmiany','ok');haptic('success');refresh()}
 function deleteEntry(){TX=TX.filter(x=>x.id!==editId);saveTX();closeEdit();toast('Wpis usunięty','info');haptic('medium');refresh()}
 
 /* ════════ stats ════════ */
@@ -1632,7 +1637,47 @@ document.getElementById('s-monthly').addEventListener('input',e=>{const v=Math.m
 document.getElementById('s-threshold').addEventListener('change',e=>{S.threshold=Math.min(100,Math.max(1,parseFloat(e.target.value)||80));saveS();refresh()});
 document.getElementById('s-currency').addEventListener('change',e=>{S.currency=e.target.value.trim()||'zł';saveS();refresh()});
 document.getElementById('in-text').addEventListener('input',function(){this.style.height='auto';this.style.height=this.scrollHeight+'px'});
-document.getElementById('i-amount').addEventListener('keydown',e=>{if(e.key==='Enter')saveIncome()});
+
+/* ═══ pola kwotowe ═══
+   type="text" + inputmode="decimal" daje na iOS klawiaturę z przecinkiem
+   (type="number" jej nie ma), ale przepuszcza litery — więc filtrujemy sami. */
+function wireAmountField(id, onDone){
+  const el=document.getElementById(id);
+  if(!el)return;
+  el.addEventListener('input',()=>{
+    const before=el.value;
+    let v=before.replace(/[^\d.,]/g,'');          // tylko cyfry i separator
+    v=v.replace(/[.,]/g, m=>m).replace(/([.,])(?=.*[.,])/g,''); // jeden separator
+    v=v.replace(/^([.,])/,'0$1');                  // ",5" → "0,5"
+    const parts=v.split(/[.,]/);
+    if(parts[1]!==undefined)v=parts[0]+','+parts[1].slice(0,2);  // max 2 miejsca
+    if(v!==before){
+      const pos=el.selectionStart-(before.length-v.length);
+      el.value=v;
+      try{el.setSelectionRange(pos,pos)}catch(e){}
+    }
+  });
+  el.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){e.preventDefault();el.blur();onDone();}
+  });
+}
+wireAmountField('i-amount', saveIncome);
+wireAmountField('e-amount', saveEdit);
+
+/* Enter w opisie przenosi do kwoty — bez zamykania klawiatury,
+   więc arkusz nie skacze. */
+function wireNextField(fromId,toId){
+  const from=document.getElementById(fromId);
+  if(!from)return;
+  from.addEventListener('keydown',e=>{
+    if(e.key!=='Enter')return;
+    e.preventDefault();
+    const to=document.getElementById(toId);
+    if(to)to.focus();
+  });
+}
+wireNextField('i-desc','i-amount');
+wireNextField('e-desc','e-amount');
 document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;closeSheet();closeIncome();closeEdit();closeMove();closeRestore()});
 
 /* ════════ boot ════════ */
@@ -1644,24 +1689,39 @@ function initKeyboard(){
   const vv=window.visualViewport;
   if(!vv){document.documentElement.style.setProperty('--kb','0px');return;}
 
-  let raf=null, lastKb=-1;
+  let raf=null, lastKb=-1, settleT=null;
 
   const read=()=>{
-    /* layoutHeight − visualHeight − ile widok przewinięto = wysokość klawiatury.
-       offsetTop bywa >0 gdy iOS sam przewinie stronę; wliczamy go, żeby nie zawyżyć. */
     const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
     return kb > 80 ? Math.round(kb) : 0;     // <80px to pasek narzędzi, nie klawiatura
+  };
+
+  const commit=(kb)=>{
+    if(kb===lastKb)return;
+    lastKb=kb;
+    document.documentElement.style.setProperty('--kb', kb+'px');
+    document.body.classList.toggle('kb-open', kb>0);
+    if(window.scrollY!==0)window.scrollTo(0,0);
   };
 
   const apply=()=>{
     raf=null;
     const kb=read();
-    if(kb===lastKb)return;
-    lastKb=kb;
-    document.documentElement.style.setProperty('--kb', kb+'px');
-    document.body.classList.toggle('kb-open', kb>0);
-    /* iOS lubi przewinąć layout viewport — cofamy to */
-    if(window.scrollY!==0)window.scrollTo(0,0);
+
+    /* Przeskok między klawiaturą literową a numeryczną: różnica bywa 40–60 px.
+       Otwarcie i zamknięcie stosujemy natychmiast, samą zmianę wysokości
+       dopiero gdy się ustabilizuje — inaczej arkusz drga przy przełączaniu pól. */
+    const opening = kb>0 && lastKb===0;
+    const closing = kb===0 && lastKb>0;
+
+    if(opening || closing || lastKb<0){
+      clearTimeout(settleT);
+      commit(kb);
+      return;
+    }
+    if(Math.abs(kb-lastKb) < 4)return;
+    clearTimeout(settleT);
+    settleT=setTimeout(()=>commit(read()), 90);
   };
 
   const schedule=()=>{ if(!raf)raf=requestAnimationFrame(apply); };
@@ -1684,15 +1744,17 @@ document.addEventListener('focusin',e=>{
   window.scrollTo(0,0);
   const sheet=el.closest('.sheet');
   if(!sheet)return;
-  /* poczekaj aż --kb się ustawi i arkusz zmieni wysokość */
+  /* Klawiatura już otwarta (przeskok między polami) → krótkie opóźnienie.
+     Klawiatura się dopiero pojawia → poczekaj na jej animację. */
+  const already=document.body.classList.contains('kb-open');
   setTimeout(()=>{
     window.scrollTo(0,0);
     const r=el.getBoundingClientRect();
     const s=sheet.getBoundingClientRect();
     if(r.bottom > s.bottom - 8 || r.top < s.top + 8){
-      el.scrollIntoView({block:'center',behavior:'smooth'});
+      el.scrollIntoView({block:'nearest',behavior:'smooth'});
     }
-  },340);
+  }, already ? 60 : 340);
 });
 
 /* zamknięcie arkusza = zamknięcie klawiatury */
